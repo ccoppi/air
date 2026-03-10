@@ -2,12 +2,32 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Air Hockey JS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Air Hockey Mobile</title>
     <style>
-        body { background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; font-family: sans-serif; }
-        canvas { border: 5px solid #fff; background: #004400; cursor: none; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        #ui { position: absolute; top: 20px; text-align: center; pointer-events: none; }
+        body { 
+            background: #1a1a1a; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* Impedisce lo scroll della pagina */
+            touch-action: none; /* Disabilita i gesti del browser come il pinch-to-zoom */
+        }
+        canvas { 
+            border: 4px solid #fff; 
+            background: radial-gradient(circle, #004d40 0%, #002b24 100%);
+            box-shadow: 0 0 25px rgba(0,0,0,0.7);
+            max-width: 95vw;
+            max-height: 80vh;
+            touch-action: none;
+        }
+        #ui { margin-bottom: 10px; text-align: center; }
+        h1 { font-size: 1.5rem; margin: 5px 0; }
     </style>
 </head>
 <body>
@@ -22,46 +42,84 @@ const ctx = canvas.getContext('2d');
 const pScore = document.getElementById('playerScore');
 const cScore = document.getElementById('cpuScore');
 
+// Dimensioni fisse del gioco (logiche)
 canvas.width = 400;
 canvas.height = 600;
 
-let player = { x: 200, y: 550, r: 25, score: 0 };
-let cpu = { x: 200, y: 50, r: 25, score: 0 };
-let puck = { x: 200, y: 300, vx: 0, vy: 0, r: 15 };
+let player = { x: 200, y: 550, r: 30, score: 0 };
+let cpu = { x: 200, y: 50, r: 30, score: 0 };
+let puck = { x: 200, y: 300, vx: 0, vy: 0, r: 18 };
 
-// Input Mouse/Touch
-canvas.addEventListener('mousemove', e => {
+// Funzione per calcolare la posizione corretta (sia mouse che touch)
+function getPos(e) {
     let rect = canvas.getBoundingClientRect();
-    player.x = e.clientX - rect.left;
-    player.y = e.clientY - rect.top;
-    // Vincoli (non oltre la metà campo)
+    let clientX, clientY;
+    
+    if (e.touches) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    // Proporzione tra dimensione reale del canvas e dimensione visualizzata
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+function handleMove(e) {
+    e.preventDefault(); // Evita scroll o refresh su mobile
+    const pos = getPos(e);
+    player.x = pos.x;
+    player.y = pos.y;
+
+    // Vincoli: non uscire dai bordi laterali e non superare la metà campo
+    if (player.x < player.r) player.x = player.r;
+    if (player.x > canvas.width - player.r) player.x = canvas.width - player.r;
     if (player.y < canvas.height / 2 + player.r) player.y = canvas.height / 2 + player.r;
-});
+    if (player.y > canvas.height - player.r) player.y = canvas.height - player.r;
+}
+
+// Eventi Mouse e Touch
+canvas.addEventListener('mousemove', handleMove);
+canvas.addEventListener('touchmove', handleMove, { passive: false });
+canvas.addEventListener('touchstart', handleMove, { passive: false });
 
 function update() {
-    // Movimento Puck
     puck.x += puck.vx;
     puck.y += puck.vy;
-    puck.vx *= 0.98; // Attrito
-    puck.vy *= 0.98;
+    puck.vx *= 0.985; // Leggermente meno attrito per fluidità
+    puck.vy *= 0.985;
 
-    // Collisioni pareti
-    if (puck.x < puck.r || puck.x > canvas.width - puck.r) puck.vx *= -1;
+    // Rimbalzi pareti laterali
+    if (puck.x < puck.r || puck.x > canvas.width - puck.r) {
+        puck.vx *= -1;
+        puck.x = puck.x < puck.r ? puck.r : canvas.width - puck.r;
+    }
     
-    // Goal e collisioni fondo
-    if (puck.y < 0 || puck.y > canvas.height) {
-        if (puck.x > 150 && puck.x < 250) {
-            if (puck.y < 0) player.score++; else cpu.score++;
+    // Goal e pareti fondo
+    if (puck.y < puck.r || puck.y > canvas.height - puck.r) {
+        if (puck.x > 130 && puck.x < 270) {
+            if (puck.y < puck.r) player.score++; else cpu.score++;
             resetPuck();
         } else {
             puck.vy *= -1;
+            puck.y = puck.y < puck.r ? puck.r : canvas.height - puck.r;
         }
     }
 
-    // AI Semplice per la CPU
-    cpu.x += (puck.x - cpu.x) * 0.1;
+    // AI CPU (un po' più reattiva)
+    let cpuSpeed = 0.12;
+    cpu.x += (puck.x - cpu.x) * cpuSpeed;
+    if (cpu.x < cpu.r) cpu.x = cpu.r;
+    if (cpu.x > canvas.width - cpu.r) cpu.x = canvas.width - cpu.r;
 
-    // Collisione con i mallet (Player e CPU)
     checkCollision(player);
     checkCollision(cpu);
 
@@ -75,9 +133,13 @@ function checkCollision(mallet) {
     let distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < puck.r + mallet.r) {
         let angle = Math.atan2(dy, dx);
-        let speed = 10;
+        let speed = 12; // Velocità di rimbalzo fissata
         puck.vx = Math.cos(angle) * speed;
         puck.vy = Math.sin(angle) * speed;
+        
+        // Evita che il puck rimanga incastrato nel mallet
+        puck.x = mallet.x + (puck.r + mallet.r) * Math.cos(angle);
+        puck.y = mallet.y + (puck.r + mallet.r) * Math.sin(angle);
     }
 }
 
@@ -91,21 +153,33 @@ function resetPuck() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Linea di metà campo
-    ctx.strokeStyle = "white";
+    // Linea metà campo e cerchio centrale
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50, 0, Math.PI*2); ctx.stroke();
+
+    // Porte
+    ctx.strokeStyle = "yellow";
+    ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(130, 0); ctx.lineTo(270, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(130, canvas.height); ctx.lineTo(270, canvas.height); ctx.stroke();
 
     // Mallet Player
-    ctx.fillStyle = "cyan";
+    ctx.fillStyle = "#00f2ff";
+    ctx.shadowBlur = 10; ctx.shadowColor = "#00f2ff";
     ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
 
     // Mallet CPU
-    ctx.fillStyle = "red";
+    ctx.fillStyle = "#ff0055";
+    ctx.shadowColor = "#ff0055";
     ctx.beginPath(); ctx.arc(cpu.x, cpu.y, cpu.r, 0, Math.PI*2); ctx.fill();
 
     // Puck
     ctx.fillStyle = "white";
+    ctx.shadowBlur = 5; ctx.shadowColor = "white";
     ctx.beginPath(); ctx.arc(puck.x, puck.y, puck.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
 
     update();
     requestAnimationFrame(draw);
