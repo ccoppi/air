@@ -3,55 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Classic Wood Air Hockey</title>
+    <title>Air Hockey Pro - V3</title>
     <style>
         body { 
-            background: #2c1a0a; /* Colore scuro per far risaltare il tavolo */
+            background: #1a1a1a; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            height: 100vh; margin: 0; color: #fff; font-family: 'Georgia', serif; /* Font classico */
+            height: 100vh; margin: 0; color: white; font-family: 'Segoe UI', sans-serif;
             overflow: hidden; touch-action: none; 
         }
         #game-container { position: relative; display: flex; flex-direction: column; align-items: center; }
-        
         canvas { 
-            border: 15px solid #4a2c11; /* Bordo spesso tipo cornice di legno */
-            border-radius: 10px;
-            /* Texture Parquet NBA con gradienti CSS */
-            background: 
-                linear-gradient(170deg, rgba(210,180,140,0.3) 0%, rgba(0,0,0,0) 100%),
-                repeating-linear-gradient(
-                    90deg,
-                    #eec98e 0px,
-                    #eec98e 30px,
-                    #e1b36f 30px,
-                    #e1b36f 60px
-                );
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.8);
+            border: 4px solid #fff; 
+            background: radial-gradient(circle, #004d40 0%, #002b24 100%);
             max-width: 95vw; max-height: 70vh; touch-action: none; display: none;
         }
-
-        #menu, #win-screen { display: flex; flex-direction: column; align-items: center; gap: 15px; text-align: center;}
-        h1 { text-shadow: 2px 2px 4px rgba(0,0,0,0.8); color: #f1c40f; }
-        
+        #menu, #win-screen { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .btn {
-            padding: 15px 30px; font-size: 1.2rem; border: 2px solid #4a2c11; border-radius: 5px;
-            cursor: pointer; width: 220px; color: #fff; font-weight: bold; transition: 0.2s;
-            font-family: 'Georgia', serif; text-transform: uppercase;
+            padding: 15px 30px; font-size: 1.2rem; border: none; border-radius: 10px;
+            cursor: pointer; width: 220px; color: white; font-weight: bold; transition: 0.2s;
         }
-        .btn:hover { transform: scale(1.05); }
-        /* Colori pulsanti più opachi per lo stile legno */
-        .btn-easy { background: #5d8a60; }
-        .btn-medium { background: #b8864a; }
-        .btn-hard { background: #964b4b; }
-        .btn-menu { background: #4a2c11; margin-top: 10px; width: auto; padding: 8px 20px; border: 1px solid #fff;}
-        
-        #score-board { font-size: 2rem; margin-bottom: 10px; display: none; font-weight: bold; text-shadow: 2px 2px 2px rgba(0,0,0,0.8); }
-        
+        .btn-easy { background: #4caf50; }
+        .btn-medium { background: #ff9800; }
+        .btn-hard { background: #f44336; }
+        .btn-menu { background: #555; margin-top: 10px; width: auto; padding: 8px 20px; }
+        #score-board { font-size: 1.8rem; margin-bottom: 10px; display: none; font-weight: bold; }
         #overlay-msg {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 5rem; font-weight: bold; color: #f1c40f;
-            text-shadow: 4px 4px 10px rgba(0,0,0,0.9);
-            display: none; pointer-events: none; text-align: center; font-family: 'Times New Roman', Times, serif;
+            font-size: 4rem; font-weight: bold; text-shadow: 2px 2px 15px black;
+            display: none; pointer-events: none; text-align: center;
         }
     </style>
 </head>
@@ -59,34 +38,31 @@
 
     <div id="game-container">
         <div id="menu">
-            <h1>CLASSIC<br>AIR HOCKEY</h1>
-            <p style="color: #eec98e">Tabellone in parquet NBA.<br>Primo a 5 Goal vince!</p>
-            <button class="btn btn-easy" onclick="startGame(0.05, 4, 0.3)">AMICHEVOLE</button>
-            <button class="btn btn-medium" onclick="startGame(0.1, 7, 0.5)">PLAYOFF</button>
-            <button class="btn btn-hard" onclick="startGame(0.18, 11, 0.8)">FINALS NBA</button>
+            <h1>AIR HOCKEY PRO</h1>
+            <p>Primo a 5 Goal vince!</p>
+            <button class="btn btn-easy" onclick="startGame(0.05, 4, 0.3)">FACILE</button>
+            <button class="btn btn-medium" onclick="startGame(0.1, 7, 0.5)">MEDIO</button>
+            <button class="btn btn-hard" onclick="startGame(0.18, 11, 0.8)">DIFFICILE</button>
         </div>
 
         <div id="win-screen" style="display:none;">
-            <h1 id="win-text">CAMPIONE!</h1>
+            <h1 id="win-text">HAI VINTO!</h1>
             <button class="btn btn-menu" onclick="showMenu()">TORNA AL MENU</button>
         </div>
 
         <div id="score-board">
-            <span style="color:#81d4fa">HOME</span> <span id="playerScore">0</span> - <span id="cpuScore">0</span> <span style="color:#ef9a9a">GUEST</span>
+            <span style="color:#00f2ff">TU</span> <span id="playerScore">0</span> - <span id="cpuScore">0</span> <span style="color:#ff4444">CPU</span>
         </div>
         
         <canvas id="hockey"></canvas>
         <div id="overlay-msg"><span id="goal-text">GOAL!</span><br><span id="countdown">3</span></div>
         
-        <button id="backToMenu" class="btn btn-menu" style="display:none;" onclick="showMenu()">RESET</button>
+        <button id="backToMenu" class="btn btn-menu" style="display:none;" onclick="showMenu()">TORNA AL MENU</button>
     </div>
 
 <script>
 const canvas = document.getElementById('hockey');
 const ctx = canvas.getContext('2d');
-// Pre-generiamo il pattern dei fori dell'aria per performance
-let airHolePattern;
-
 const menu = document.getElementById('menu');
 const winScreen = document.getElementById('win-screen');
 const scoreBoard = document.getElementById('score-board');
@@ -103,27 +79,9 @@ let isPaused = false;
 let player = { x: 200, y: 550, r: 30, score: 0 };
 let cpu = { x: 200, y: 50, r: 30, score: 0 };
 let puck = { x: 200, y: 300, vx: 0, vy: 0, r: 18 };
-let lastScorer = Math.random() > 0.5 ? 'player' : 'cpu';
+let lastScorer = Math.random() > 0.5 ? 'player' : 'cpu'; // Per il primo avvio
 
 let cpuIntelligence, cpuMaxSpeed, cpuAggressiveness;
-
-// --- FUNZIONE PER CREARE LA TEXTURE DEI FORI ---
-function createAirHolePattern() {
-    const holeCanvas = document.createElement('canvas');
-    const holeCtx = holeCanvas.getContext('2d');
-    holeCanvas.width = 15; // Distanza tra i fori
-    holeCanvas.height = 15;
-    
-    // Disegna un piccolo foro grigio scuro
-    holeCtx.fillStyle = 'rgba(0,0,0,0.15)'; // Molto tenue sul legno
-    holeCtx.beginPath();
-    holeCtx.arc(2, 2, 1.2, 0, Math.PI * 2);
-    holeCtx.fill();
-    
-    return ctx.createPattern(holeCanvas, 'repeat');
-}
-airHolePattern = createAirHolePattern();
-
 
 function startGame(intel, maxSpd, aggr) {
     cpuIntelligence = intel; cpuMaxSpeed = maxSpd; cpuAggressiveness = aggr;
@@ -144,14 +102,20 @@ function showMenu() {
 
 function resetPuck(isGoal, receiver) {
     if (player.score >= 5 || cpu.score >= 5) { endGame(); return; }
+
     isPaused = true;
     puck.vx = 0; puck.vy = 0;
+    
+    // Posiziona il disco nella metà campo di chi ha subito goal
     puck.x = canvas.width / 2;
     puck.y = (receiver === 'player') ? 400 : 200;
+
     goalText.style.display = isGoal ? 'inline' : 'none';
     overlayMsg.style.display = 'block';
+    
     let timeLeft = 3;
     countdownEl.innerText = timeLeft;
+
     let timer = setInterval(() => {
         timeLeft--;
         countdownEl.innerText = timeLeft > 0 ? timeLeft : "";
@@ -159,7 +123,8 @@ function resetPuck(isGoal, receiver) {
             clearInterval(timer);
             overlayMsg.style.display = 'none';
             isPaused = false;
-            puck.vy = (receiver === 'player') ? 7 : -7; // Leggermente più veloce alla partenza
+            // Lancio verso chi ha il possesso (il "receiver")
+            puck.vy = (receiver === 'player') ? 5 : -5;
             puck.vx = (Math.random() - 0.5) * 4;
         }
     }, 1000);
@@ -170,8 +135,8 @@ function endGame() {
     canvas.style.display = 'none'; scoreBoard.style.display = 'none';
     btnBack.style.display = 'none'; overlayMsg.style.display = 'none';
     winScreen.style.display = 'flex';
-    document.getElementById('win-text').innerText = player.score >= 5 ? "CAMPIONE NBA!" : "GUEST VINCONO!";
-    document.getElementById('win-text').style.color = player.score >= 5 ? "#81d4fa" : "#ef9a9a";
+    document.getElementById('win-text').innerText = player.score >= 5 ? "HAI VINTO!" : "LA CPU HA VINTO!";
+    document.getElementById('win-text').style.color = player.score >= 5 ? "#00f2ff" : "#ff4444";
 }
 
 function getPos(e) {
@@ -198,8 +163,11 @@ function limitPos(obj, isPlayer) {
 
 function update() {
     if (isPaused) return;
-    puck.x += puck.vx; puck.y += puck.vy;
-    puck.vx *= 0.988; puck.vy *= 0.988; // Attrito leggermente ridotto per simulare l'aria
+
+    puck.x += puck.vx;
+    puck.y += puck.vy;
+    puck.vx *= 0.985;
+    puck.vy *= 0.985;
 
     if (puck.x < puck.r || puck.x > canvas.width - puck.r) {
         puck.vx *= -1;
@@ -208,8 +176,13 @@ function update() {
     
     if (puck.y < 0 || puck.y > canvas.height) {
         if (puck.x > 130 && puck.x < 270) {
-            if (puck.y < 0) { player.score++; resetPuck(true, 'cpu'); } 
-            else { cpu.score++; resetPuck(true, 'player'); }
+            if (puck.y < 0) {
+                player.score++;
+                resetPuck(true, 'cpu'); // La CPU ha subito goal, riceve il disco
+            } else {
+                cpu.score++;
+                resetPuck(true, 'player'); // Il Player ha subito goal, riceve il disco
+            }
         } else {
             puck.vy *= -1;
             puck.y = puck.y < 0 ? 0 : canvas.height;
@@ -217,97 +190,61 @@ function update() {
     }
 
     // IA CPU
-    let targetX = puck.x; let targetY = 50;
+    let targetX = puck.x;
+    let targetY = 50;
     const inCorner = (puck.y < 80 && (puck.x < 100 || puck.x > 300));
-    if (inCorner) { targetX = canvas.width / 2; targetY = 60; } 
-    else if (puck.y < canvas.height * 0.45) { targetY = puck.y - 20; } 
-    else { targetY = 50 + (puck.y * 0.08 * cpuAggressiveness); }
 
-    let dx = targetX - cpu.x; let dy = targetY - cpu.y;
+    if (inCorner) {
+        targetX = canvas.width / 2; targetY = 60;
+    } else if (puck.y < canvas.height * 0.45) {
+        targetY = puck.y - 20;
+    } else {
+        targetY = 50 + (puck.y * 0.08 * cpuAggressiveness);
+    }
+
+    let dx = targetX - cpu.x;
+    let dy = targetY - cpu.y;
     cpu.x += Math.max(Math.min(dx * cpuIntelligence, cpuMaxSpeed), -cpuMaxSpeed);
     cpu.y += Math.max(Math.min(dy * cpuIntelligence, cpuMaxSpeed), -cpuMaxSpeed);
     
     limitPos(cpu, false);
-    checkCollision(player); checkCollision(cpu);
+    checkCollision(player);
+    checkCollision(cpu);
+
     document.getElementById('playerScore').innerText = player.score;
     document.getElementById('cpuScore').innerText = cpu.score;
 }
 
 function checkCollision(mallet) {
-    let dx = puck.x - mallet.x; let dy = puck.y - mallet.y;
+    let dx = puck.x - mallet.x;
+    let dy = puck.y - mallet.y;
     let distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < puck.r + mallet.r) {
         let angle = Math.atan2(dy, dx);
-        let force = 15; 
-        puck.vx = Math.cos(angle) * force; puck.vy = Math.sin(angle) * force;
+        let force = 14; 
+        puck.vx = Math.cos(angle) * force;
+        puck.vy = Math.sin(angle) * force;
         puck.x = mallet.x + (puck.r + mallet.r) * Math.cos(angle);
         puck.y = mallet.y + (puck.r + mallet.r) * Math.sin(angle);
     }
 }
 
 function draw() {
-    // Il background del tavolo è gestito dai CSS, puliamo solo il canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // --- 1. DISEGNA I FORI DELL'ARIA ---
-    ctx.fillStyle = airHolePattern;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // --- 2. DISEGNA LE LINEE DEL CAMPO STILE NBA ---
-    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 3;
-    // Linea centrale
+    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
-    
-    // Cerchio centrale (stile area canestro)
-    ctx.strokeStyle = "#b71c1c"; // Rosso scuro
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 60, 0, Math.PI*2); ctx.stroke();
-    
-    // Aree di porta (semicerchi)
-    ctx.strokeStyle = "#fff";
-    ctx.beginPath(); ctx.arc(canvas.width/2, 0, 100, 0, Math.PI); ctx.stroke(); // Alto
-    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height, 100, Math.PI, Math.PI*2); ctx.stroke(); // Basso
-
-    // Porte (fisse nere)
-    ctx.strokeStyle = "#000"; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 8;
     ctx.beginPath(); ctx.moveTo(130, 0); ctx.lineTo(270, 0); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(130, canvas.height); ctx.lineTo(270, canvas.height); ctx.stroke();
-
-    // --- 3. DISEGNA GLI ELEMENTI DI GIOCO ---
-    // Player: Mallet Classico Plastica Blu scuro
-    drawClassicMallet(player.x, player.y, player.r, "#0d47a1", "#1565c0");
-    // CPU: Mallet Classico Plastica Rossa scura
-    drawClassicMallet(cpu.x, cpu.y, cpu.r, "#b71c1c", "#d32f2f");
-    // Puck: Plastica Nera lucida
-    drawPuck(puck.x, puck.y, puck.r);
+    drawCircle(player.x, player.y, player.r, "#00f2ff");
+    drawCircle(cpu.x, cpu.y, cpu.r, "#ff4444");
+    drawCircle(puck.x, puck.y, puck.r, "#fff");
 }
 
-// Funzione per disegnare mallet realistici con impugnatura
-function drawClassicMallet(x, y, r, colorDark, colorLight) {
-    ctx.save();
-    ctx.shadowBlur = 5; ctx.shadowColor = "rgba(0,0,0,0.5)";
-    // Base
-    ctx.fillStyle = colorDark;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-    // Pomello impugnatura (effetto 3D)
-    ctx.fillStyle = colorLight;
-    ctx.beginPath(); ctx.arc(x, y, r*0.6, 0, Math.PI*2); ctx.fill();
-    // Riflesso lucido
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
-    ctx.beginPath(); ctx.arc(x - r*0.3, y - r*0.3, r*0.3, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-}
-
-// Funzione per disegnare un puck realistico
-function drawPuck(x, y, r) {
-    ctx.save();
-    ctx.shadowBlur = 8; ctx.shadowColor = "rgba(0,0,0,0.8)";
-    ctx.fillStyle = "#1a1a1a"; // Nero quasi puro
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-    // Bordi zigrinati (semplificati con cerchi concentrici)
-    ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(x, y, r*0.8, 0, Math.PI*2); ctx.stroke();
-    ctx.restore();
+function drawCircle(x, y, r, color) {
+    ctx.fillStyle = color; ctx.shadowBlur = 10; ctx.shadowColor = color;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
 }
 
 function animate() {
