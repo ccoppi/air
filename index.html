@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Air Hockey Pro</title>
+    <title>Air Hockey Pro - Fixed</title>
     <style>
         body { 
             background: #1a1a1a; 
@@ -27,6 +27,11 @@
         .btn-hard { background: #f44336; }
         .btn-menu { background: #555; margin-top: 10px; width: auto; padding: 8px 20px; }
         #score-board { font-size: 1.5rem; margin-bottom: 10px; display: none; }
+        #overlay-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 3rem; font-weight: bold; text-shadow: 2px 2px 10px black;
+            display: none; pointer-events: none; text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -45,6 +50,8 @@
         </div>
         
         <canvas id="hockey"></canvas>
+        <div id="overlay-msg">GOAL!<br><span id="countdown">5</span></div>
+        
         <button id="backToMenu" class="btn btn-menu" style="display:none;" onclick="showMenu()">TORNA AL MENU</button>
     </div>
 
@@ -54,19 +61,19 @@ const ctx = canvas.getContext('2d');
 const menu = document.getElementById('menu');
 const scoreBoard = document.getElementById('score-board');
 const btnBack = document.getElementById('backToMenu');
+const overlayMsg = document.getElementById('overlay-msg');
+const countdownEl = document.getElementById('countdown');
 
 canvas.width = 400;
 canvas.height = 600;
 
 let gameState = 'menu';
+let isPaused = false;
 let player = { x: 200, y: 550, r: 30, score: 0 };
 let cpu = { x: 200, y: 50, r: 30, score: 0 };
 let puck = { x: 200, y: 300, vx: 0, vy: 0, r: 18 };
 
-// Variabili difficoltà
-let cpuIntelligence = 0.1; 
-let cpuMaxSpeed = 5;
-let cpuAggressiveness = 0.5; // Quanto la CPU tende a uscire dalla porta
+let cpuIntelligence, cpuMaxSpeed, cpuAggressiveness;
 
 function startGame(intel, maxSpd, aggr) {
     cpuIntelligence = intel;
@@ -74,14 +81,12 @@ function startGame(intel, maxSpd, aggr) {
     cpuAggressiveness = aggr;
     player.score = 0;
     cpu.score = 0;
-    resetPuck(true);
-    
     gameState = 'game';
     menu.style.display = 'none';
     canvas.style.display = 'block';
     scoreBoard.style.display = 'block';
     btnBack.style.display = 'block';
-    
+    resetPuck();
     animate();
 }
 
@@ -91,17 +96,33 @@ function showMenu() {
     canvas.style.display = 'none';
     scoreBoard.style.display = 'none';
     btnBack.style.display = 'none';
+    overlayMsg.style.display = 'none';
 }
 
-function resetPuck(isNewGame) {
+function resetPuck() {
+    isPaused = true;
     puck.x = canvas.width / 2;
     puck.y = canvas.height / 2;
+    puck.vx = 0;
+    puck.vy = 0;
     
-    // Lancio casuale iniziale
-    const angle = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 2 + (Math.random() - 0.5));
-    const speed = 5;
-    puck.vx = Math.cos(angle) * speed;
-    puck.vy = Math.sin(angle) * speed;
+    overlayMsg.style.display = 'block';
+    let timeLeft = 5;
+    countdownEl.innerText = timeLeft;
+
+    let timer = setInterval(() => {
+        timeLeft--;
+        countdownEl.innerText = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            overlayMsg.style.display = 'none';
+            isPaused = false;
+            // Lancio casuale dopo la pausa
+            const angle = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 2 + (Math.random() - 0.5));
+            puck.vx = Math.cos(angle) * 5;
+            puck.vy = Math.sin(angle) * 5;
+        }
+    }, 1000);
 }
 
 function getPos(e) {
@@ -130,16 +151,31 @@ function limitPos(obj, isPlayer) {
 }
 
 function update() {
+    if (isPaused) return;
+
     puck.x += puck.vx;
     puck.y += puck.vy;
     puck.vx *= 0.99;
     puck.vy *= 0.99;
 
+    // --- ANTI-INCASTRO ANGOLI ---
+    // Se il disco è molto vicino ai bordi laterali E ai bordi superiore/inferiore
+    const margin = 40;
+    if (puck.x < margin || puck.x > canvas.width - margin) {
+        if (puck.y < margin || puck.y > canvas.height - margin) {
+            // Applica una piccola forza verso il centro
+            puck.vx += (puck.x < canvas.width/2 ? 0.2 : -0.2);
+            puck.vy += (puck.y < canvas.height/2 ? 0.2 : -0.2);
+        }
+    }
+
+    // Rimbalzi Pareti
     if (puck.x < puck.r || puck.x > canvas.width - puck.r) {
-        puck.vx *= -1;
+        puck.vx *= -1.05; // Piccolo boost per evitare stallo
         puck.x = puck.x < puck.r ? puck.r : canvas.width - puck.r;
     }
     
+    // Goal
     if (puck.y < 0 || puck.y > canvas.height) {
         if (puck.x > 130 && puck.x < 270) {
             if (puck.y < 0) player.score++; else cpu.score++;
@@ -150,27 +186,16 @@ function update() {
         }
     }
 
-    // --- LOGICA CPU AVANZATA ---
+    // AI CPU
     let targetX = puck.x;
-    let targetY = 50; // Posizione base difensiva
+    let targetY = (puck.y < canvas.height / 2) ? puck.y - 20 : 50 + (puck.y * 0.1 * cpuAggressiveness);
 
-    // Se il disco è nella metà campo della CPU, essa attacca
-    if (puck.y < canvas.height / 2) {
-        targetY = puck.y - 20; // Cerca di posizionarsi dietro il disco per colpirlo
-    } else {
-        // Se il disco è lontano, torna verso la porta ma segue l'asse X
-        targetY = 50 + (puck.y * 0.1 * cpuAggressiveness); 
-    }
-
-    // Movimento fluido verso il target
     let dx = targetX - cpu.x;
     let dy = targetY - cpu.y;
-    
     cpu.x += Math.max(Math.min(dx * cpuIntelligence, cpuMaxSpeed), -cpuMaxSpeed);
     cpu.y += Math.max(Math.min(dy * cpuIntelligence, cpuMaxSpeed), -cpuMaxSpeed);
     
     limitPos(cpu, false);
-
     checkCollision(player);
     checkCollision(cpu);
 
@@ -184,9 +209,8 @@ function checkCollision(mallet) {
     let distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < puck.r + mallet.r) {
         let angle = Math.atan2(dy, dx);
-        let speed = 12;
-        puck.vx = Math.cos(angle) * speed;
-        puck.vy = Math.sin(angle) * speed;
+        puck.vx = Math.cos(angle) * 13;
+        puck.vy = Math.sin(angle) * 13;
         puck.x = mallet.x + (puck.r + mallet.r) * Math.cos(angle);
         puck.y = mallet.y + (puck.r + mallet.r) * Math.sin(angle);
     }
@@ -194,12 +218,12 @@ function checkCollision(mallet) {
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Campo decorativo
+    // Linee campo
     ctx.strokeStyle = "rgba(255,255,255,0.2)";
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
     ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50, 0, Math.PI*2); ctx.stroke();
-    // Porte
+    // Porte luminose
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 8;
     ctx.beginPath(); ctx.moveTo(130, 0); ctx.lineTo(270, 0); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(130, canvas.height); ctx.lineTo(270, canvas.height); ctx.stroke();
