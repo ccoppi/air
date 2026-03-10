@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Air Hockey JS</title>
+    <style>
+        body { background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; font-family: sans-serif; }
+        canvas { border: 5px solid #fff; background: #004400; cursor: none; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #ui { position: absolute; top: 20px; text-align: center; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1>Score: <span id="playerScore">0</span> - <span id="cpuScore">0</span></h1>
+    </div>
+    <canvas id="hockey"></canvas>
+
+<script>
+const canvas = document.getElementById('hockey');
+const ctx = canvas.getContext('2d');
+const pScore = document.getElementById('playerScore');
+const cScore = document.getElementById('cpuScore');
+
+canvas.width = 400;
+canvas.height = 600;
+
+let player = { x: 200, y: 550, r: 25, score: 0 };
+let cpu = { x: 200, y: 50, r: 25, score: 0 };
+let puck = { x: 200, y: 300, vx: 0, vy: 0, r: 15 };
+
+// Input Mouse/Touch
+canvas.addEventListener('mousemove', e => {
+    let rect = canvas.getBoundingClientRect();
+    player.x = e.clientX - rect.left;
+    player.y = e.clientY - rect.top;
+    // Vincoli (non oltre la metà campo)
+    if (player.y < canvas.height / 2 + player.r) player.y = canvas.height / 2 + player.r;
+});
+
+function update() {
+    // Movimento Puck
+    puck.x += puck.vx;
+    puck.y += puck.vy;
+    puck.vx *= 0.98; // Attrito
+    puck.vy *= 0.98;
+
+    // Collisioni pareti
+    if (puck.x < puck.r || puck.x > canvas.width - puck.r) puck.vx *= -1;
+    
+    // Goal e collisioni fondo
+    if (puck.y < 0 || puck.y > canvas.height) {
+        if (puck.x > 150 && puck.x < 250) {
+            if (puck.y < 0) player.score++; else cpu.score++;
+            resetPuck();
+        } else {
+            puck.vy *= -1;
+        }
+    }
+
+    // AI Semplice per la CPU
+    cpu.x += (puck.x - cpu.x) * 0.1;
+
+    // Collisione con i mallet (Player e CPU)
+    checkCollision(player);
+    checkCollision(cpu);
+
+    pScore.innerText = player.score;
+    cScore.innerText = cpu.score;
+}
+
+function checkCollision(mallet) {
+    let dx = puck.x - mallet.x;
+    let dy = puck.y - mallet.y;
+    let distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance < puck.r + mallet.r) {
+        let angle = Math.atan2(dy, dx);
+        let speed = 10;
+        puck.vx = Math.cos(angle) * speed;
+        puck.vy = Math.sin(angle) * speed;
+    }
+}
+
+function resetPuck() {
+    puck.x = canvas.width / 2;
+    puck.y = canvas.height / 2;
+    puck.vx = 0;
+    puck.vy = 0;
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Linea di metà campo
+    ctx.strokeStyle = "white";
+    ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
+
+    // Mallet Player
+    ctx.fillStyle = "cyan";
+    ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
+
+    // Mallet CPU
+    ctx.fillStyle = "red";
+    ctx.beginPath(); ctx.arc(cpu.x, cpu.y, cpu.r, 0, Math.PI*2); ctx.fill();
+
+    // Puck
+    ctx.fillStyle = "white";
+    ctx.beginPath(); ctx.arc(puck.x, puck.y, puck.r, 0, Math.PI*2); ctx.fill();
+
+    update();
+    requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>
