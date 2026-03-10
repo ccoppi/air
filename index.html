@@ -3,54 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Air Hockey - Menu & Difficoltà</title>
+    <title>Air Hockey Pro</title>
     <style>
         body { 
             background: #1a1a1a; 
-            display: flex; 
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-            color: white; 
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden; 
-            touch-action: none; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; color: white; font-family: 'Segoe UI', sans-serif;
+            overflow: hidden; touch-action: none; 
         }
         #game-container { position: relative; display: flex; flex-direction: column; align-items: center; }
         canvas { 
             border: 4px solid #fff; 
             background: radial-gradient(circle, #004d40 0%, #002b24 100%);
-            max-width: 95vw;
-            max-height: 70vh;
-            touch-action: none;
-            display: none; /* Nascosto all'inizio */
+            max-width: 95vw; max-height: 70vh; touch-action: none; display: none;
         }
-        /* Stili Menu */
-        #menu, #ui-overlay {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
+        #menu { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .btn {
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            width: 200px;
-            transition: transform 0.2s;
-            color: white;
-            font-weight: bold;
+            padding: 15px 30px; font-size: 1.2rem; border: none; border-radius: 10px;
+            cursor: pointer; width: 220px; color: white; font-weight: bold; transition: 0.2s;
         }
-        .btn:active { transform: scale(0.95); }
         .btn-easy { background: #4caf50; }
         .btn-medium { background: #ff9800; }
         .btn-hard { background: #f44336; }
         .btn-menu { background: #555; margin-top: 10px; width: auto; padding: 8px 20px; }
-        
         #score-board { font-size: 1.5rem; margin-bottom: 10px; display: none; }
     </style>
 </head>
@@ -58,11 +33,11 @@
 
     <div id="game-container">
         <div id="menu">
-            <h1>AIR HOCKEY</h1>
+            <h1>AIR HOCKEY PRO</h1>
             <p>Seleziona Difficoltà:</p>
-            <button class="btn btn-easy" onclick="startGame(0.06, 3)">FACILE</button>
-            <button class="btn btn-medium" onclick="startGame(0.12, 6)">MEDIO</button>
-            <button class="btn btn-hard" onclick="startGame(0.20, 10)">DIFFICILE</button>
+            <button class="btn btn-easy" onclick="startGame(0.05, 4, 0.3)">FACILE</button>
+            <button class="btn btn-medium" onclick="startGame(0.1, 7, 0.5)">MEDIO</button>
+            <button class="btn btn-hard" onclick="startGame(0.18, 11, 0.8)">DIFFICILE</button>
         </div>
 
         <div id="score-board">
@@ -70,7 +45,6 @@
         </div>
         
         <canvas id="hockey"></canvas>
-        
         <button id="backToMenu" class="btn btn-menu" style="display:none;" onclick="showMenu()">TORNA AL MENU</button>
     </div>
 
@@ -90,15 +64,17 @@ let cpu = { x: 200, y: 50, r: 30, score: 0 };
 let puck = { x: 200, y: 300, vx: 0, vy: 0, r: 18 };
 
 // Variabili difficoltà
-let cpuSpeed = 0.1;
+let cpuIntelligence = 0.1; 
 let cpuMaxSpeed = 5;
+let cpuAggressiveness = 0.5; // Quanto la CPU tende a uscire dalla porta
 
-function startGame(speed, maxSpeed) {
-    cpuSpeed = speed;
-    cpuMaxSpeed = maxSpeed;
+function startGame(intel, maxSpd, aggr) {
+    cpuIntelligence = intel;
+    cpuMaxSpeed = maxSpd;
+    cpuAggressiveness = aggr;
     player.score = 0;
     cpu.score = 0;
-    resetPuck();
+    resetPuck(true);
     
     gameState = 'game';
     menu.style.display = 'none';
@@ -117,44 +93,53 @@ function showMenu() {
     btnBack.style.display = 'none';
 }
 
+function resetPuck(isNewGame) {
+    puck.x = canvas.width / 2;
+    puck.y = canvas.height / 2;
+    
+    // Lancio casuale iniziale
+    const angle = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 2 + (Math.random() - 0.5));
+    const speed = 5;
+    puck.vx = Math.cos(angle) * speed;
+    puck.vy = Math.sin(angle) * speed;
+}
+
 function getPos(e) {
     let rect = canvas.getBoundingClientRect();
     let clientX = e.touches ? e.touches[0].clientX : e.clientX;
     let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    return { 
+        x: (clientX - rect.left) * (canvas.width / rect.width), 
+        y: (clientY - rect.top) * (canvas.height / rect.height) 
+    };
 }
 
-function handleMove(e) {
-    if (gameState !== 'game') return;
-    e.preventDefault();
-    const pos = getPos(e);
-    player.x = pos.x;
-    player.y = pos.y;
-    // Vincoli
-    if (player.x < player.r) player.x = player.r;
-    if (player.x > canvas.width - player.r) player.x = canvas.width - player.r;
-    if (player.y < canvas.height / 2 + player.r) player.y = canvas.height / 2 + player.r;
-    if (player.y > canvas.height - player.r) player.y = canvas.height - player.r;
-}
+canvas.addEventListener('mousemove', e => { if(gameState==='game') { const p = getPos(e); player.x = p.x; player.y = p.y; limitPos(player, true); }});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if(gameState==='game') { const p = getPos(e); player.x = p.x; player.y = p.y; limitPos(player, true); }}, {passive:false});
 
-canvas.addEventListener('mousemove', handleMove);
-canvas.addEventListener('touchmove', handleMove, { passive: false });
+function limitPos(obj, isPlayer) {
+    if (obj.x < obj.r) obj.x = obj.r;
+    if (obj.x > canvas.width - obj.r) obj.x = canvas.width - obj.r;
+    if (isPlayer) {
+        if (obj.y < canvas.height / 2 + obj.r) obj.y = canvas.height / 2 + obj.r;
+        if (obj.y > canvas.height - obj.r) obj.y = canvas.height - obj.r;
+    } else {
+        if (obj.y < obj.r) obj.y = obj.r;
+        if (obj.y > canvas.height / 2 - obj.r) obj.y = canvas.height / 2 - obj.r;
+    }
+}
 
 function update() {
     puck.x += puck.vx;
     puck.y += puck.vy;
-    puck.vx *= 0.985;
-    puck.vy *= 0.985;
+    puck.vx *= 0.99;
+    puck.vy *= 0.99;
 
-    // Pareti laterali
     if (puck.x < puck.r || puck.x > canvas.width - puck.r) {
         puck.vx *= -1;
         puck.x = puck.x < puck.r ? puck.r : canvas.width - puck.r;
     }
     
-    // Goal
     if (puck.y < 0 || puck.y > canvas.height) {
         if (puck.x > 130 && puck.x < 270) {
             if (puck.y < 0) player.score++; else cpu.score++;
@@ -165,14 +150,26 @@ function update() {
         }
     }
 
-    // AI CPU intelligente basata sulla difficoltà selezionata
+    // --- LOGICA CPU AVANZATA ---
     let targetX = puck.x;
-    let diffX = targetX - cpu.x;
-    // Limita la velocità della CPU in base alla difficoltà
-    cpu.x += Math.max(Math.min(diffX * cpuSpeed, cpuMaxSpeed), -cpuMaxSpeed);
+    let targetY = 50; // Posizione base difensiva
+
+    // Se il disco è nella metà campo della CPU, essa attacca
+    if (puck.y < canvas.height / 2) {
+        targetY = puck.y - 20; // Cerca di posizionarsi dietro il disco per colpirlo
+    } else {
+        // Se il disco è lontano, torna verso la porta ma segue l'asse X
+        targetY = 50 + (puck.y * 0.1 * cpuAggressiveness); 
+    }
+
+    // Movimento fluido verso il target
+    let dx = targetX - cpu.x;
+    let dy = targetY - cpu.y;
     
-    if (cpu.x < cpu.r) cpu.x = cpu.r;
-    if (cpu.x > canvas.width - cpu.r) cpu.x = canvas.width - cpu.r;
+    cpu.x += Math.max(Math.min(dx * cpuIntelligence, cpuMaxSpeed), -cpuMaxSpeed);
+    cpu.y += Math.max(Math.min(dy * cpuIntelligence, cpuMaxSpeed), -cpuMaxSpeed);
+    
+    limitPos(cpu, false);
 
     checkCollision(player);
     checkCollision(cpu);
@@ -187,46 +184,34 @@ function checkCollision(mallet) {
     let distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < puck.r + mallet.r) {
         let angle = Math.atan2(dy, dx);
-        puck.vx = Math.cos(angle) * 12;
-        puck.vy = Math.sin(angle) * 12;
+        let speed = 12;
+        puck.vx = Math.cos(angle) * speed;
+        puck.vy = Math.sin(angle) * speed;
         puck.x = mallet.x + (puck.r + mallet.r) * Math.cos(angle);
         puck.y = mallet.y + (puck.r + mallet.r) * Math.sin(angle);
     }
 }
 
-function resetPuck() {
-    puck.x = canvas.width / 2;
-    puck.y = canvas.height / 2;
-    puck.vx = 0;
-    puck.vy = 0;
-}
-
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Campo
+    // Campo decorativo
     ctx.strokeStyle = "rgba(255,255,255,0.2)";
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
     ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50, 0, Math.PI*2); ctx.stroke();
-
     // Porte
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 8;
     ctx.beginPath(); ctx.moveTo(130, 0); ctx.lineTo(270, 0); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(130, canvas.height); ctx.lineTo(270, canvas.height); ctx.stroke();
+    // Elementi
+    drawCircle(player.x, player.y, player.r, "#00f2ff");
+    drawCircle(cpu.x, cpu.y, cpu.r, "#ff4444");
+    drawCircle(puck.x, puck.y, puck.r, "#fff");
+}
 
-    // Player (Cyan)
-    ctx.fillStyle = "#00f2ff";
-    ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
-
-    // CPU (Red)
-    ctx.fillStyle = "#ff4444";
-    ctx.beginPath(); ctx.arc(cpu.x, cpu.y, cpu.r, 0, Math.PI*2); ctx.fill();
-
-    // Puck
-    ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(puck.x, puck.y, puck.r, 0, Math.PI*2); ctx.fill();
+function drawCircle(x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
 }
 
 function animate() {
