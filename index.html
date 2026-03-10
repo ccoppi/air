@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Air Hockey Pro - Final Edition</title>
+    <title>Air Hockey Pro - V3</title>
     <style>
         body { 
             background: #1a1a1a; 
@@ -26,11 +26,11 @@
         .btn-medium { background: #ff9800; }
         .btn-hard { background: #f44336; }
         .btn-menu { background: #555; margin-top: 10px; width: auto; padding: 8px 20px; }
-        #score-board { font-size: 1.8rem; margin-bottom: 10px; display: none; font-weight: bold; color: #fff; }
+        #score-board { font-size: 1.8rem; margin-bottom: 10px; display: none; font-weight: bold; }
         #overlay-msg {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 3.5rem; font-weight: bold; text-shadow: 2px 2px 15px black;
-            display: none; pointer-events: none; text-align: center; color: #fff;
+            font-size: 4rem; font-weight: bold; text-shadow: 2px 2px 15px black;
+            display: none; pointer-events: none; text-align: center;
         }
     </style>
 </head>
@@ -55,7 +55,7 @@
         </div>
         
         <canvas id="hockey"></canvas>
-        <div id="overlay-msg"><span id="goal-text">GOAL!</span><br><span id="countdown">5</span></div>
+        <div id="overlay-msg"><span id="goal-text">GOAL!</span><br><span id="countdown">3</span></div>
         
         <button id="backToMenu" class="btn btn-menu" style="display:none;" onclick="showMenu()">TORNA AL MENU</button>
     </div>
@@ -79,51 +79,41 @@ let isPaused = false;
 let player = { x: 200, y: 550, r: 30, score: 0 };
 let cpu = { x: 200, y: 50, r: 30, score: 0 };
 let puck = { x: 200, y: 300, vx: 0, vy: 0, r: 18 };
+let lastScorer = Math.random() > 0.5 ? 'player' : 'cpu'; // Per il primo avvio
 
 let cpuIntelligence, cpuMaxSpeed, cpuAggressiveness;
 
 function startGame(intel, maxSpd, aggr) {
-    cpuIntelligence = intel;
-    cpuMaxSpeed = maxSpd;
-    cpuAggressiveness = aggr;
-    player.score = 0;
-    cpu.score = 0;
+    cpuIntelligence = intel; cpuMaxSpeed = maxSpd; cpuAggressiveness = aggr;
+    player.score = 0; cpu.score = 0;
     gameState = 'game';
-    menu.style.display = 'none';
-    winScreen.style.display = 'none';
-    canvas.style.display = 'block';
-    scoreBoard.style.display = 'block';
-    btnBack.style.display = 'block';
-    resetPuck(false); // false = inizio partita, non mostrare "GOAL!"
+    menu.style.display = 'none'; winScreen.style.display = 'none';
+    canvas.style.display = 'block'; scoreBoard.style.display = 'block'; btnBack.style.display = 'block';
+    resetPuck(false, lastScorer === 'player' ? 'cpu' : 'player'); 
     animate();
 }
 
 function showMenu() {
     gameState = 'menu';
-    menu.style.display = 'flex';
-    winScreen.style.display = 'none';
-    canvas.style.display = 'none';
-    scoreBoard.style.display = 'none';
-    btnBack.style.display = 'none';
-    overlayMsg.style.display = 'none';
+    menu.style.display = 'flex'; winScreen.style.display = 'none';
+    canvas.style.display = 'none'; scoreBoard.style.display = 'none';
+    btnBack.style.display = 'none'; overlayMsg.style.display = 'none';
 }
 
-function resetPuck(isGoal) {
-    if (player.score >= 5 || cpu.score >= 5) {
-        endGame();
-        return;
-    }
+function resetPuck(isGoal, receiver) {
+    if (player.score >= 5 || cpu.score >= 5) { endGame(); return; }
 
     isPaused = true;
-    puck.x = canvas.width / 2;
-    puck.y = canvas.height / 2;
-    puck.vx = 0;
-    puck.vy = 0;
+    puck.vx = 0; puck.vy = 0;
     
+    // Posiziona il disco nella metà campo di chi ha subito goal
+    puck.x = canvas.width / 2;
+    puck.y = (receiver === 'player') ? 400 : 200;
+
     goalText.style.display = isGoal ? 'inline' : 'none';
     overlayMsg.style.display = 'block';
     
-    let timeLeft = 5;
+    let timeLeft = 3;
     countdownEl.innerText = timeLeft;
 
     let timer = setInterval(() => {
@@ -133,19 +123,17 @@ function resetPuck(isGoal) {
             clearInterval(timer);
             overlayMsg.style.display = 'none';
             isPaused = false;
-            const angle = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 2 + (Math.random() - 0.5));
-            puck.vx = Math.cos(angle) * 6;
-            puck.vy = Math.sin(angle) * 6;
+            // Lancio verso chi ha il possesso (il "receiver")
+            puck.vy = (receiver === 'player') ? 5 : -5;
+            puck.vx = (Math.random() - 0.5) * 4;
         }
     }, 1000);
 }
 
 function endGame() {
     gameState = 'menu';
-    canvas.style.display = 'none';
-    scoreBoard.style.display = 'none';
-    btnBack.style.display = 'none';
-    overlayMsg.style.display = 'none';
+    canvas.style.display = 'none'; scoreBoard.style.display = 'none';
+    btnBack.style.display = 'none'; overlayMsg.style.display = 'none';
     winScreen.style.display = 'flex';
     document.getElementById('win-text').innerText = player.score >= 5 ? "HAI VINTO!" : "LA CPU HA VINTO!";
     document.getElementById('win-text').style.color = player.score >= 5 ? "#00f2ff" : "#ff4444";
@@ -155,10 +143,7 @@ function getPos(e) {
     let rect = canvas.getBoundingClientRect();
     let clientX = e.touches ? e.touches[0].clientX : e.clientX;
     let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { 
-        x: (clientX - rect.left) * (canvas.width / rect.width), 
-        y: (clientY - rect.top) * (canvas.height / rect.height) 
-    };
+    return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
 }
 
 canvas.addEventListener('mousemove', e => { if(gameState==='game') { const p = getPos(e); player.x = p.x; player.y = p.y; limitPos(player, true); }});
@@ -181,40 +166,40 @@ function update() {
 
     puck.x += puck.vx;
     puck.y += puck.vy;
-    puck.vx *= 0.99;
-    puck.vy *= 0.99;
+    puck.vx *= 0.985;
+    puck.vy *= 0.985;
 
-    // Rimbalzi Pareti
     if (puck.x < puck.r || puck.x > canvas.width - puck.r) {
         puck.vx *= -1;
         puck.x = puck.x < puck.r ? puck.r : canvas.width - puck.r;
     }
     
-    // Goal
     if (puck.y < 0 || puck.y > canvas.height) {
         if (puck.x > 130 && puck.x < 270) {
-            if (puck.y < 0) player.score++; else cpu.score++;
-            resetPuck(true);
+            if (puck.y < 0) {
+                player.score++;
+                resetPuck(true, 'cpu'); // La CPU ha subito goal, riceve il disco
+            } else {
+                cpu.score++;
+                resetPuck(true, 'player'); // Il Player ha subito goal, riceve il disco
+            }
         } else {
             puck.vy *= -1;
             puck.y = puck.y < 0 ? 0 : canvas.height;
         }
     }
 
-    // --- LOGICA CPU INTELLIGENTE ANTI-ANGOLO ---
+    // IA CPU
     let targetX = puck.x;
     let targetY = 50;
-    
-    // Se il disco è negli angoli alti, la CPU non si butta addosso ma aspetta al centro della porta
     const inCorner = (puck.y < 80 && (puck.x < 100 || puck.x > 300));
 
     if (inCorner) {
-        targetX = canvas.width / 2;
-        targetY = 60;
-    } else if (puck.y < canvas.height / 2) {
-        targetY = puck.y - 15;
+        targetX = canvas.width / 2; targetY = 60;
+    } else if (puck.y < canvas.height * 0.45) {
+        targetY = puck.y - 20;
     } else {
-        targetY = 50 + (puck.y * 0.1 * cpuAggressiveness);
+        targetY = 50 + (puck.y * 0.08 * cpuAggressiveness);
     }
 
     let dx = targetX - cpu.x;
@@ -236,7 +221,7 @@ function checkCollision(mallet) {
     let distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < puck.r + mallet.r) {
         let angle = Math.atan2(dy, dx);
-        let force = 13;
+        let force = 14; 
         puck.vx = Math.cos(angle) * force;
         puck.vy = Math.sin(angle) * force;
         puck.x = mallet.x + (puck.r + mallet.r) * Math.cos(angle);
@@ -246,33 +231,25 @@ function checkCollision(mallet) {
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Campo
-    ctx.strokeStyle = "rgba(255,255,255,0.2)";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
     ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50, 0, Math.PI*2); ctx.stroke();
-    // Porte
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 8;
     ctx.beginPath(); ctx.moveTo(130, 0); ctx.lineTo(270, 0); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(130, canvas.height); ctx.lineTo(270, canvas.height); ctx.stroke();
-    // Elementi
     drawCircle(player.x, player.y, player.r, "#00f2ff");
     drawCircle(cpu.x, cpu.y, cpu.r, "#ff4444");
     drawCircle(puck.x, puck.y, puck.r, "#fff");
 }
 
 function drawCircle(x, y, r, color) {
-    ctx.fillStyle = color;
-    ctx.shadowBlur = 10; ctx.shadowColor = color;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.fillStyle = color; ctx.shadowBlur = 10; ctx.shadowColor = color;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
 }
 
 function animate() {
     if (gameState !== 'game') return;
-    update();
-    draw();
-    requestAnimationFrame(animate);
+    update(); draw(); requestAnimationFrame(animate);
 }
 </script>
 </body>
